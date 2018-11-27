@@ -31,7 +31,7 @@
 
 class kuka {
 private:
-  sensor_msgs::JointState joints_state; ///< sensor_msgs::JointState tye
+  sensor_msgs::JointState jointsState; ///< sensor_msgs::JointState tye
                                         ///< variable to read current joint states
   KDL::Chain kinematicChain;                     ///< KDL::Chain type vaiable to define
                                         ///< kinematic chain
