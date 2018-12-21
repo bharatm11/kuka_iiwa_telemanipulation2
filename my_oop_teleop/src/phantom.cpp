@@ -227,7 +227,7 @@ void phantom::getJoints(const sensor_msgs::JointState::ConstPtr& msg) {
 }
 //  Callback to get pose from driver
 void phantom::get_pos(const geometry_msgs::PoseStamped::ConstPtr & _data) {
-	phantom::pose_ = *_data;
+  phantom::pose_ = *_data;
 }
 //  Get joint numbers for the chain
 unsigned int phantom::getJointNums() {
@@ -275,11 +275,15 @@ KDL::JntArray phantom::returnCurrJoints() {
   joints = phantom::jointPosKdl_;
   return phantom::jointPosKdl_;
 }
+sensor_msgs::JointState phantom::returnlastJoints() {
+  KDL::JntArray joints;
+  joints = phantom::jointPosKdl_;
+  return phantom::jointsState_;
+}
 // this is used to return the current pose from the esubscriber
 geometry_msgs::PoseStamped phantom::returnCurrPose() {
-  geometry_msgs::PoseStamped pose;
-  pose = phantom::pose_;
-  return pose;
+  ros::spinOnce();
+  return  phantom::pose_;
 }
 
 phantom::phantom() {

@@ -224,6 +224,7 @@ int main(int argc, char **argv) {
 
   // Global Variables
   // =============================================================================
+  KDL::JntArray newJoints;  ///< from IK
   KDL::JntArray currOmniJoints;  ///< current phantom joints
   KDL::JntArray prevPhantomJoints;  ///< previous phantom joints
   trajectory_msgs::JointTrajectory cmd;  ///< final command to robot
@@ -336,8 +337,8 @@ int main(int argc, char **argv) {
       // =======================================================================
       // =======================================================================
       // xyzRef = init in cam + command. Commands are added to initial camera frame
-      xyzRef.linear.x = iiwa_init_pos_in_camera.x()-xyzCommand.linear.x;
-      xyzRef.linear.y = iiwa_init_pos_in_camera.y()-xyzCommand.linear.y;
+      xyzRef.linear.x = iiwa_init_pos_in_camera.x()-xyzCommand.linear.y;
+      xyzRef.linear.y = iiwa_init_pos_in_camera.y()-xyzCommand.linear.x;
       xyzRef.linear.z = iiwa_init_pos_in_camera.z()-xyzCommand.linear.z;
       // =======================================================================
       // =======================================================================
@@ -352,6 +353,7 @@ int main(int argc, char **argv) {
       // =======================================================================
       // // =======================================================================
       // // Angular commands
+      ros::spinOnce();
        currOmniJoints = omni.returnCurrJoints();
       // xyzCommand.angular.x = (currOmniJoints(3) - prevPhantomJoints(3))*2;
       // xyzCommand.angular.y = (currOmniJoints(4)- prevPhantomJoints(4))*2;
@@ -369,7 +371,7 @@ int main(int argc, char **argv) {
       rot_in_cam = transform*(iiwa_init_rot_in_world);
       tf::Matrix3x3(rot_in_cam).getRPY(iiwa_roll_in_cam,iiwa_pitch_in_cam,iiwa_yaw_in_cam);
       xyzRef.angular.x = iiwa_roll_in_cam + currOmniJoints(3);
-      xyzRef.angular.y = iiwa_pitch_in_cam + currOmniJoints(4);
+      xyzRef.angular.y = iiwa_pitch_in_cam - currOmniJoints(4);
       xyzRef.angular.z = iiwa_yaw_in_cam;
       rot_in_cam.setRPY(xyzRef.angular.x,xyzRef.angular.y,xyzRef.angular.z);
       rot_in_world = inv_transform*(rot_in_cam);
@@ -384,7 +386,11 @@ int main(int argc, char **argv) {
       // =======================================================================
       // =======================================================================
       // IK and send to robot
-      cmd = ku.driveRobot(ku.normalizePoints(ku.evalKinematicsIK(refCartPos)));
+      newJoints = ku.evalKinematicsIK(refCartPos);
+      sensor_msgs::JointState jays = omni.returnlastJoints();
+      ROS_INFO_STREAM(jays.position[4]);
+      newJoints(6) = newJoints(6) + currOmniJoints(5);
+      cmd = ku.driveRobot(ku.normalizePoints(newJoints));
       cmd_pub.publish(cmd);
       // =======================================================================
       prevPhantomJoints = currOmniJoints;
