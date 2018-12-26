@@ -222,8 +222,9 @@ KDL::Chain kuka::makeChain() {
   chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
                                     KDL::Frame::DH_Craig1989(0, M_PI_2, 0, 0)));
   // joint 7 (with flange adapter)
-  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
-                                   KDL::Frame::DH_Craig1989(0, 0, 0.12597, 0)));
+  /* chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),
+                                    KDL::Frame::DH_Craig1989(0, 0, 0.12597, 0)));*/
+ chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH_Craig1989(0,0,0.37897,0)));
   kuka::kinematicChain_ = chain_;
   return chain_;
 }

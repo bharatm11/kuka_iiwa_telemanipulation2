@@ -200,13 +200,13 @@
 #include "kuka.hpp"
 #include "phantom.hpp"
 
+
 int main(int argc, char **argv) {
   // ===========================================================================
   // ROS Things
   // ===========================================================================
   ros::init(argc, argv, "kuka");
   ros::NodeHandle n;
-  ros::NodeHandle nh;
   kuka ku;  ///< kuka class object
   phantom omni;  ///< phantom class object
   int loop_freq = 1000;
@@ -248,6 +248,7 @@ int main(int argc, char **argv) {
   tf::Quaternion iiwa_init_rot_in_cam;  ///<  IIWA initial orientation in camera
   tf::Quaternion rot_in_world;
   tf::Quaternion rot_in_cam;
+  tf::Quaternion rotPhantom;  ///<  Rotation of haptic Dane Powell
   tf::Vector3 iiwa_init_pos_in_camera;  ///<  IIWA initial position in camera
   tf::Vector3 iiwa_pos_in_world_v3;  ///<  IIWA position in world for transform
   double iiwa_init_roll_in_cam,iiwa_init_pitch_in_cam,iiwa_init_yaw_in_cam;  ///<  IIWA initial orientation RPY in camera
@@ -271,6 +272,7 @@ int main(int argc, char **argv) {
     ROS_ERROR("%s",ex.what());
     ros::Duration(1.0).sleep();
   }
+
   // =============================================================================
   //   Phantom Init Cartpos (mix of FK and pose from driver)
   // =============================================================================
@@ -308,6 +310,7 @@ int main(int argc, char **argv) {
       ROS_ERROR("%s",ex.what());
       ros::Duration(1.0).sleep();
     }
+
     // =============================================================================
     //   Phantom Curr Cartpos (mix of FK and pose from driver)
     // =============================================================================
@@ -317,6 +320,7 @@ int main(int argc, char **argv) {
     phantomCurrCartPos.p[0] = phantom_pose.pose.position.x;
     phantomCurrCartPos.p[1] = phantom_pose.pose.position.y;
     phantomCurrCartPos.p[2] = phantom_pose.pose.position.z;
+    tf::Quaternion q(phantom_pose.pose.orientation.x, phantom_pose.pose.orientation.y,phantom_pose.pose.orientation.z,phantom_pose.pose.orientation.w);
     // =============================================================================
     //  IIWA Current Cartpos  (from FK)
     // =============================================================================
@@ -327,9 +331,9 @@ int main(int argc, char **argv) {
     // =========================================================================
       // =======================================================================
       //  Phantom positions become linear commands. gain 1.50
-      xyzCommand.linear.x = -(phantomCurrCartPos.p[0]) * 1.5;
-      xyzCommand.linear.z = -(phantomCurrCartPos.p[1]) * 1.5;
-      xyzCommand.linear.y = (phantomCurrCartPos.p[2]) * 1.5;
+      xyzCommand.linear.x = -(phantomCurrCartPos.p[0]) * 0;
+      xyzCommand.linear.y = -(phantomCurrCartPos.p[1]) *0;
+      xyzCommand.linear.z = (phantomCurrCartPos.p[2]) * 0;
       // =======================================================================
       // =======================================================================
       // Get IIWA init cartpos(positions) in current camera frame
@@ -370,31 +374,27 @@ int main(int argc, char **argv) {
       rot_in_world.setRPY(xyzIIWACurr.angular.x,xyzIIWACurr.angular.y,xyzIIWACurr.angular.z);
       rot_in_cam = transform*(iiwa_init_rot_in_world);
       tf::Matrix3x3(rot_in_cam).getRPY(iiwa_roll_in_cam,iiwa_pitch_in_cam,iiwa_yaw_in_cam);
-      tf::Quaternion q(phantom_pose.pose.orientation.x,phantom_pose.pose.orientation.y,phantom_pose.pose.orientation.z,phantom_pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-      xyzRef.angular.x = iiwa_roll_in_cam +currOmniJoints(3);
-      xyzRef.angular.y = iiwa_pitch_in_cam +xyzPhantomCurr.angular.y;// - currOmniJoints(4);
-      double a = omni.returnlastJoints();
+      xyzRef.angular.x = iiwa_roll_in_cam;// + xyzPhantomCurr.angular.z*0.7;
+      xyzRef.angular.y = iiwa_pitch_in_cam;// + xyzPhantomCurr.angular.y*0.7;;// - currOmniJoints(4);
       xyzRef.angular.z = iiwa_yaw_in_cam;
       rot_in_cam.setRPY(xyzRef.angular.x,xyzRef.angular.y,xyzRef.angular.z);
-      rot_in_world = inv_transform*(rot_in_cam);
+      rot_in_world = inv_transform*q*(rot_in_cam);
       tf::Matrix3x3(rot_in_world).getRPY(xyzRef.angular.x,xyzRef.angular.y,xyzRef.angular.z);
       // =======================================================================
       // Compile xyzRef into refCartPos
       refCartPos.p[0] = xyzRef.linear.x;
       refCartPos.p[1] = xyzRef.linear.y;
       refCartPos.p[2] = xyzRef.linear.z;
-
       rpy = KDL::Rotation::RPY(xyzRef.angular.x,xyzRef.angular.y,xyzRef.angular.z);
+      rpy = KDL::Rotation::Quaternion(rot_in_world.x(),rot_in_world.y(),rot_in_world.z(),rot_in_world.w());
       refCartPos.M = rpy;
       // =======================================================================
       // =======================================================================
       // IK and send to robot
       newJoints = ku.evalKinematicsIK(refCartPos);
-
-      newJoints(6) = a;// newJoints(6);// + currOmniJoints(5);
+      sensor_msgs::JointState jays = omni.returnlastJoints();
+      ROS_INFO_STREAM(jays.position[4]);
+      newJoints(6) = newJoints(6) + currOmniJoints(5);
       cmd = ku.driveRobot(ku.normalizePoints(newJoints));
       cmd_pub.publish(cmd);
       // =======================================================================

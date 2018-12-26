@@ -278,7 +278,7 @@ class phantom {
     */
   geometry_msgs::PoseStamped returnCurrPose();
 
-  sensor_msgs::JointState returnlastJoints();
+  /*sensor_msgs::JointState*/double returnlastJoints();
 };
 
 #endif  // MY_GIT_KITTING_CELL_WS_SRC_KITTING_CELL_INCLUDE_KITTING_CELL_PHANTOM_HPP_

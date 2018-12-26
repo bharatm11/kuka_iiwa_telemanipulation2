@@ -192,23 +192,38 @@
 #include <kdl/chainiksolvervel_pinv.hpp>
 #include <kdl/chainiksolverpos_nr.hpp>
 #include <kdl/chainjnttojacsolver.hpp>
+#include <kdl_parser/kdl_parser.hpp>
 #include "phantom.hpp"
 
 KDL::Chain phantom::makeChain() {
+  //TODO check phantom chain
   KDL::Chain chain_;
   //base
   chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),KDL::Frame::DH(0,0,0,0)));
   //joint 1
   chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0, M_PI_2,0,0)));
   //joint 2
-  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0.157508, 0.0,0.0,0)));//127508
+  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0.1321, 0.0,0.0,0)));//127508
   //joint 3
   chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0, M_PI_2,0,0)));//0.149352
   //joint 4
-  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0, -M_PI_2,0.139352,0)));
+  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0, -M_PI_2,0.1321,0)));//0.139352
   //joint 5 not considering the roll angle in th stylus (last DoF)
   chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0,M_PI_2,0,0)));
+  chain_.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ),KDL::Frame::DH(0,0.0,-0.05,0)));
   phantom::kinematicChain_ = chain_;
+
+  KDL::Tree my_tree;
+     if (!kdl_parser::treeFromFile("src/phantom_omni/omni_description/urdf/omni.urdf", my_tree)){
+        ROS_ERROR("Failed to construct kdl tree");
+     }
+     bool exit_value;
+     KDL::Chain chain;
+     exit_value = my_tree.getChain("base","stylus",chain);
+     if(exit_value) {
+       ROS_ERROR("It works");
+     }
+
   return chain_;
 }
 //  Calback to get joint angles
@@ -224,6 +239,9 @@ void phantom::getJoints(const sensor_msgs::JointState::ConstPtr& msg) {
   swap=phantom::jointsState_.position[3];
   phantom::jointsState_.position[3]=phantom::jointsState_.position[5];
   phantom::jointsState_.position[5]=swap;
+  for (int k = 0; k < numJoints_; ++k) {
+    phantom::jointPosKdl_(k) = phantom::jointsState_.position[k];
+  }
 }
 //  Callback to get pose from driver
 void phantom::get_pos(const geometry_msgs::PoseStamped::ConstPtr & _data) {
@@ -266,19 +284,26 @@ KDL::Frame phantom::evalKinematicsFK() {
   }
   // perform FK
   bool status = fksolver.JntToCart(phantom::jointPosKdl_, cartPos);
-  phantom::currCartpos_ = cartPos;
+  // double r,p,y;
+  // cartPos.M.GetRPY(r,p,y);
+  // ROS_INFO_STREAM("R=   "<<r<<"  p=  "<<p<<"  y=  "<<y);
+  // phantom::currCartpos_ = cartPos;
   return cartPos;
 }
 // this is used to return the current joint values from the esubscriber
 KDL::JntArray phantom::returnCurrJoints() {
+  ros::spinOnce();
   KDL::JntArray joints;
+  for (int k = 0; k < numJoints_; ++k) {
+    phantom::jointPosKdl_(k) = phantom::jointsState_.position[k];
+  }
   joints = phantom::jointPosKdl_;
   return phantom::jointPosKdl_;
 }
-sensor_msgs::JointState phantom::returnlastJoints() {
-  KDL::JntArray joints;
-  joints = phantom::jointPosKdl_;
-  return phantom::jointsState_;
+/*sensor_msgs::JointState*/ double phantom::returnlastJoints() {
+  ros::spinOnce();
+  double a=phantom::jointsState_.position[5];
+  return a;// phantom::jointsState_;
 }
 // this is used to return the current pose from the esubscriber
 geometry_msgs::PoseStamped phantom::returnCurrPose() {

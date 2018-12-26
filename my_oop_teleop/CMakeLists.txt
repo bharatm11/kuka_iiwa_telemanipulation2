@@ -26,6 +26,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   kdl_conversions
+kdl_parser
 )
 find_package( Eigen3 REQUIRED )
 find_package( orocos_kdl REQUIRED )
@@ -224,4 +225,6 @@ add_executable(oop_tele src/kuka.cpp src/oop.cpp src/phantom.cpp)
 #add_executable(oop_tele src/my_teleop_complete_orientation.cpp)
 target_link_libraries(oop_tele ${catkin_LIBRARIES} orocos-kdl)
 
+add_executable(button src/button_sub.cpp)
+target_link_libraries(button ${catkin_LIBRARIES} orocos-kdl)
 
