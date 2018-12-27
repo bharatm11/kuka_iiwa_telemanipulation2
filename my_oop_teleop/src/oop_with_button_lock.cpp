@@ -250,6 +250,7 @@ int main(int argc, char **argv) {
   std::string command_topic ="/iiwa/PositionJointInterface_trajectory_controller/command";
   ros::Publisher cmd_pub =  n.advertise<trajectory_msgs::JointTrajectory>(command_topic, 1);
   ros::Subscriber button_sub = n.subscribe("/phantom/button",10, get_button);
+  auto iiwa_fk =  n.advertise<geometry_msgs::Twist>("/iiwa_fk", 1);
   // =============================================================================
 
   // Global Variables
@@ -477,6 +478,7 @@ int main(int argc, char **argv) {
       refCartPos.p[2] = xyzRef.linear.z;
 
       rpy = KDL::Rotation::RPY(xyzRef.angular.x,xyzRef.angular.y,xyzRef.angular.z);
+      iiwa_fk.publish(xyzRef);
       refCartPos.M = rpy;
       // =======================================================================
       // =======================================================================
